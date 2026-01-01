@@ -91,15 +91,15 @@ docker compose -f docker-compose.vnc.yml down
 | `docker/Dockerfile.vnc` | Immagine ROS2 + Gazebo + VNC |
 | `scripts/mqtt_bridge.py` | Bridge ROS2 ↔ MQTT (da completare) |
 
-## Hardware Reale
+## Obiettivo Finale
 
-- **CyberBrick Robot**: ESP32, 2 motori DC, differential drive
-- **CyberBrick Arm**: ESP32, 3 servo + gripper
-- **ESP32-CAM**: Camera per visione
+Sistema completamente simulato:
+1. Robot mobile naviga verso il tavolo
+2. Camera simulata rileva cubi colorati
+3. Comandi vocali: "prendi il cubo rosso"
+4. Braccio afferra il cubo
 
-Comunicazione via MQTT:
-- Topic robot: `cyberbrick/robot/cmd` → `{"rc": [L1,L2,L3,R1,R2,R3,K1,K2,K3,K4]}`
-- Topic braccio: `cyberbrick/arm/cmd` → stesso formato
+Nessun hardware reale richiesto - tutto in Gazebo.
 
 ## Note
 
