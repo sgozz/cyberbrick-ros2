@@ -70,7 +70,8 @@ Scarica da: https://www.docker.com/products/docker-desktop/
 ### 4. Clona e avvia
 
 ```bash
-cd /Users/fabio/dev/cyberbrick-ros2
+git clone https://github.com/sgozz/cyberbrick-ros2.git
+cd cyberbrick-ros2
 
 # Prima volta: build dell'immagine (10-15 min)
 docker compose build
