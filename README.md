@@ -8,7 +8,8 @@ Sviluppa e testa i tuoi script di controllo senza hardware reale - gli stessi co
 
 - **Braccio L-ONE**: 4 DOF (rotazione base, spalla, gomito) + gripper
 - **CyberBrick Truck**: Sterzo Ackermann (trazione posteriore + sterzo anteriore)
-- **Camera**: Camera simulata sul truck
+- **Camera Overhead**: Camera fissa sopra il tavolo per rilevamento cubi
+- **AI Agent**: Controllo vocale/testuale tramite LLM (Ollama)
 - **Ambiente**: Tavolo con cubi colorati (rosso, blu, verde)
 
 ## Requisiti
@@ -18,6 +19,7 @@ Sviluppa e testa i tuoi script di controllo senza hardware reale - gli stessi co
 - 8GB+ RAM
 - (Opzionale) GPU NVIDIA con nvidia-container-toolkit
 - Python 3 con `paho-mqtt` per controllare dal PC host
+- (Opzionale) Ollama per il controllo AI
 
 ## Quick Start
 
@@ -72,6 +74,27 @@ pip install paho-mqtt
 python3 scripts/test_mqtt.py
 ```
 
+### 4. (Opzionale) Controllo AI con Ollama
+
+```bash
+# Installa Ollama (https://ollama.ai)
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Scarica un modello (consigliato: qwen2.5-coder:14b)
+ollama pull qwen2.5-coder:14b
+
+# Installa le dipendenze Python
+pip install paho-mqtt requests
+
+# Avvia l'AI Agent (dal PC host, non dentro Docker)
+python3 scripts/ai_agent.py
+
+# Ora puoi controllare il braccio con comandi naturali:
+#   "Sposta il cubo rosso a sinistra"
+#   "Move the red cube to the right"
+#   "Ordina i cubi per colore"
+```
+
 ## Controllo via MQTT
 
 ### Protocollo
@@ -92,6 +115,27 @@ python3 scripts/test_mqtt.py
 |-------|---------|-------------|
 | `cyberbrick/truck/cmd` | `{"speed": 0.3, "steering": 0.2}` | Velocità (m/s) e sterzo (radianti) |
 | `cyberbrick/truck/stop` | `{}` | Stop immediato |
+
+#### Vision (output)
+
+| Topic | Payload | Descrizione |
+|-------|---------|-------------|
+| `cyberbrick/vision/state` | `{"cubes": [...]}` | Posizione dei cubi rilevati |
+
+#### Arm Controller (input)
+
+| Topic | Payload | Descrizione |
+|-------|---------|-------------|
+| `cyberbrick/arm/command` | `{"action": "pick", "x": 0.4, "y": 0.1}` | Prendi cubo alla posizione |
+| `cyberbrick/arm/command` | `{"action": "place", "x": 0.3, "y": 0.15}` | Rilascia cubo alla posizione |
+| `cyberbrick/arm/command` | `{"action": "home"}` | Torna a posizione iniziale |
+
+#### AI Agent (input/output)
+
+| Topic | Payload | Descrizione |
+|-------|---------|-------------|
+| `cyberbrick/agent/command` | `{"text": "sposta rosso a sinistra"}` | Comando in linguaggio naturale |
+| `cyberbrick/agent/response` | `{"text": "Ok, sposto..."}` | Risposta dell'AI |
 
 ### Esempio Python
 
@@ -191,9 +235,11 @@ cyberbrick-ros2/
 │   └── supervisord.conf      # Configurazione VNC
 ├── scripts/
 │   ├── mqtt_bridge.py        # Bridge MQTT <-> Gazebo
+│   ├── vision_bridge.py      # Rilevamento cubi con camera overhead
+│   ├── arm_controller.py     # Controller braccio con cinematica inversa
+│   ├── ai_agent.py           # AI Agent con Ollama LLM
 │   ├── test_mqtt.py          # Script test interattivo
-│   ├── start_simulation.sh   # Avvia simulazione completa
-│   └── vision_node.py        # Rilevamento cubi (OpenCV)
+│   └── start_simulation.sh   # Avvia simulazione completa
 ├── worlds/
 │   └── cyberbrick_world.sdf  # Mondo Gazebo (braccio, truck, tavolo, cubi)
 ├── docker-compose.linux.yml  # Docker Compose per Linux

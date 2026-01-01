@@ -64,8 +64,17 @@ class MQTTBridge:
         try:
             topic = msg.topic
 
-            # Ignore our own state messages
-            if topic in ["cyberbrick/arm/state", "cyberbrick/truck/odom"]:
+            # Ignore messages we produce or that are handled by other components
+            ignored_topics = [
+                "cyberbrick/arm/state",
+                "cyberbrick/truck/odom",
+                "cyberbrick/vision/state",  # Produced by vision_bridge
+                "cyberbrick/arm/command",  # Handled by arm_controller
+                "cyberbrick/arm/status",  # Produced by arm_controller
+                "cyberbrick/agent/command",  # Handled by ai_agent
+                "cyberbrick/agent/response",  # Produced by ai_agent
+            ]
+            if topic in ignored_topics:
                 return
 
             payload = json.loads(msg.payload.decode()) if msg.payload else {}
@@ -87,8 +96,9 @@ class MQTTBridge:
                 self.handle_arm_gripper(payload)
             elif topic == "cyberbrick/arm/move":
                 self.handle_arm_move(payload)
-            else:
-                print(f"[MQTT Bridge] Unknown topic: {topic}")
+            # Silently ignore unknown topics (may be for other components)
+            # else:
+            #     print(f"[MQTT Bridge] Unknown topic: {topic}")
 
         except json.JSONDecodeError as e:
             print(f"[MQTT Bridge] JSON decode error: {e}")
