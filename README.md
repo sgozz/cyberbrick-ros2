@@ -2,235 +2,52 @@
 
 Simulazione completa del sistema CyberBrick con Gazebo su Mac M1.
 
-## Architettura
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                           MAC M1                                 │
-│                                                                  │
-│   Browser ──────► http://localhost:6080/vnc.html                │
-│                              │                                   │
-│                              ▼                                   │
-│   ┌──────────────────────────────────────────────────────────┐  │
-│   │                    DOCKER (Colima)                        │  │
-│   │                                                           │  │
-│   │  ┌─────────────────────────────────────────────────────┐ │  │
-│   │  │              cyberbrick-ros2-vnc                     │ │  │
-│   │  │                                                      │ │  │
-│   │  │  ┌────────────────┐    ┌──────────────────────────┐ │ │  │
-│   │  │  │    Gazebo      │    │     Python Scripts       │ │ │  │
-│   │  │  │                │    │                          │ │ │  │
-│   │  │  │  🤖 Robot      │◄───│  vision_node.py          │ │ │  │
-│   │  │  │  🦾 Arm        │    │  (detect colored cubes)  │ │ │  │
-│   │  │  │  📦 Cubes      │    │                          │ │ │  │
-│   │  │  │  📷 Camera     │◄───│  voice_node.py           │ │ │  │
-│   │  │  │                │    │  (Whisper commands)      │ │ │  │
-│   │  │  └────────────────┘    └──────────────────────────┘ │ │  │
-│   │  │         ▲                         │                  │ │  │
-│   │  │         │    Ignition Topics      │                  │ │  │
-│   │  │         └─────────────────────────┘                  │ │  │
-│   │  │                                                      │ │  │
-│   │  │  VNC :5901 ──► noVNC :6080                          │ │  │
-│   │  └─────────────────────────────────────────────────────┘ │  │
-│   │                                                           │  │
-│   └──────────────────────────────────────────────────────────┘  │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-
-Tutto simulato - nessun hardware reale richiesto!
-```
-
 ## Requisiti
 
-- Mac M1 con 16GB RAM
-- Docker Desktop per Mac
-- XQuartz (per GUI)
-- ~10GB spazio disco
+- Mac M1/M2 con 8GB+ RAM
+- Docker Desktop oppure Colima
+- Browser web (per VNC)
 
-## Installazione
-
-### 1. Installa XQuartz (per visualizzare Gazebo/RViz)
+## Quick Start
 
 ```bash
-brew install --cask xquartz
-```
-
-**Riavvia il Mac** dopo l'installazione.
-
-### 2. Configura XQuartz
-
-```bash
-# Apri XQuartz
-open -a XQuartz
-
-# In XQuartz: Preferences → Security → ✅ "Allow connections from network clients"
-```
-
-### 3. Installa Docker Desktop
-
-Scarica da: https://www.docker.com/products/docker-desktop/
-
-### 4. Clona e avvia
-
-```bash
+# Clona il repo
 git clone https://github.com/sgozz/cyberbrick-ros2.git
 cd cyberbrick-ros2
 
-# Prima volta: build dell'immagine (10-15 min)
-docker compose build
+# Build dell'immagine (prima volta: ~10-15 min)
+docker compose -f docker-compose.vnc.yml build
 
-# Avvia tutto
-docker compose up
-```
-
-## Uso
-
-### Avviare la simulazione
-
-```bash
-# Terminal 1: Avvia i container
-docker compose up
-
-# Terminal 2: Entra nel container ROS2
-docker exec -it cyberbrick-ros2 bash
-
-# Dentro il container: lancia Gazebo
-ros2 launch cyberbrick_description simulation.launch.py
-```
-
-### Controllare il robot simulato
-
-```bash
-# Teleop da tastiera
-ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r cmd_vel:=/cyberbrick/cmd_vel
-
-# Oppure invia comandi diretti
-ros2 topic pub /cyberbrick/cmd_vel geometry_msgs/Twist "{linear: {x: 0.5}, angular: {z: 0.0}}"
-```
-
-### Visualizzare in RViz
-
-```bash
-ros2 run rviz2 rviz2
-```
-
-### Attivare il bridge MQTT (per robot reale)
-
-```bash
-ros2 run cyberbrick_control mqtt_bridge.py
-```
-
-## Struttura progetto
-
-```
-cyberbrick-ros2/
-├── docker/
-│   ├── Dockerfile           # Immagine ROS2 + Gazebo
-│   └── ros_entrypoint.sh    # Script avvio
-├── docker-compose.yml       # Orchestrazione container
-├── urdf/
-│   ├── cyberbrick_robot.urdf.xacro  # Modello robot mobile
-│   └── cyberbrick_arm.urdf.xacro    # Modello braccio 3DOF
-├── worlds/
-│   └── cyberbrick_world.sdf  # Mondo Gazebo con oggetti
-├── launch/
-│   └── simulation.launch.py  # Launch file principale
-├── config/
-│   ├── mosquitto.conf        # Config broker MQTT
-│   └── arm_controllers.yaml  # Controller braccio
-├── scripts/
-│   ├── mqtt_bridge.py        # Bridge ROS2 ↔ MQTT
-│   ├── vision_node.py        # Nodo visione OpenCV
-│   └── voice_node.py         # Nodo comandi vocali
-└── README.md
-```
-
-## Topics ROS2
-
-| Topic | Tipo | Descrizione |
-|:------|:-----|:------------|
-| `/cyberbrick/cmd_vel` | Twist | Velocità robot |
-| `/cyberbrick/odom` | Odometry | Posizione robot |
-| `/cyberbrick/camera/image_raw` | Image | Immagine camera |
-| `/arm/joint_states` | JointState | Stato servo braccio |
-| `/arm/command` | String | Comandi braccio (JSON) |
-
-## Obiettivo
-
-Simulare un sistema robotico completo:
-
-1. **Robot mobile** si muove nell'ambiente
-2. **Camera simulata** vede i cubi colorati sul tavolo
-3. **Vision node** rileva i cubi (OpenCV)
-4. **Voice node** riceve comandi vocali ("prendi il cubo rosso")
-5. **Braccio robotico** afferra il cubo
-
-Tutto gira in simulazione su Mac M1, senza hardware reale.
-
-## Troubleshooting
-
-### Gazebo non si apre
-
-```bash
-# Verifica XQuartz
-xhost +localhost
-
-# Verifica DISPLAY
-echo $DISPLAY  # Deve mostrare qualcosa tipo ":0"
-```
-
-### Container non parte
-
-```bash
-# Ricostruisci l'immagine
-docker compose build --no-cache
-
-# Controlla i log
-docker compose logs -f
-```
-
-### MQTT non connette
-
-```bash
-# Verifica che Mosquitto sia attivo
-docker compose ps
-
-# Testa connessione
-mosquitto_pub -h localhost -t test -m "hello"
-```
-
-## Stato del Progetto
-
-### Funzionante
-- [x] Docker con VNC per visualizzare Gazebo su Mac M1
-- [x] Robot mobile differential drive (`/cmd_vel`)
-- [x] Braccio 3DOF con joint controller (`/arm/joint1`, `/arm/joint2`, `/arm/joint3`)
-- [x] Mondo con tavolo e cubi colorati
-- [x] Container MQTT Mosquitto
-
-### Da Implementare
-- [ ] Bridge MQTT (Ignition topics ↔ MQTT per hardware reale)
-- [ ] Camera simulata sul robot
-- [ ] `vision_node.py` - Rilevamento cubi colorati con OpenCV
-- [ ] `voice_node.py` - Comandi vocali con Whisper
-- [ ] Gripper funzionante sul braccio
-- [ ] Launch file completo
-- [ ] Test con hardware reale CyberBrick
-
-## Uso con VNC (Mac M1)
-
-```bash
 # Avvia i container
 docker compose -f docker-compose.vnc.yml up -d
 
 # Apri nel browser
 open http://localhost:6080/vnc.html
+# Password VNC: password
 
-# Avvia Gazebo (da un altro terminale)
-docker exec cyberbrick-ros2-vnc bash -c "export DISPLAY=:1 && ign gazebo /ros2_ws/src/cyberbrick_description/worlds/cyberbrick_world.sdf &"
+# Avvia simulazione completa (Gazebo + Vision)
+docker exec -it cyberbrick-ros2-vnc bash /ros2_ws/src/cyberbrick_control/scripts/start_simulation.sh
 ```
 
-### Comandi robot
+## Architettura
+
+```
+Mac M1
+├── Docker
+│   ├── cyberbrick-ros2-vnc (ROS2 Humble + Gazebo Fortress + OpenCV)
+│   │   ├── VNC server (:5901)
+│   │   ├── noVNC web (:6080) ──► Browser
+│   │   ├── Gazebo simulation
+│   │   └── Vision node (cube detection)
+│   └── mosquitto (MQTT broker :1883)
+└── Browser → http://localhost:6080/vnc.html
+```
+
+**Tutto simulato - nessun hardware reale richiesto!**
+
+## Comandi
+
+### Controllare il robot
 ```bash
 # Avanti
 docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /cmd_vel -m ignition.msgs.Twist -p 'linear: {x: 0.3}'"
@@ -242,7 +59,7 @@ docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /cmd_vel -m ignition.msgs.
 docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /cmd_vel -m ignition.msgs.Twist -p 'linear: {x: 0}'"
 ```
 
-### Comandi braccio
+### Controllare il braccio
 ```bash
 # Joint 1 (base): -1.57 a 1.57 rad
 docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /arm/joint1 -m ignition.msgs.Double -p 'data: 0.5'"
@@ -254,6 +71,87 @@ docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /arm/joint2 -m ignition.ms
 docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /arm/joint3 -m ignition.msgs.Double -p 'data: -0.5'"
 ```
 
-## Agent Context
+### Testare la visione
+```bash
+# Visualizza oggetti rilevati dalla camera
+docker exec cyberbrick-ros2-vnc bash -c "source /opt/ros/humble/setup.bash && ros2 topic echo /detected_objects"
+```
 
-Vedi [agent.md](agent.md) per dettagli tecnici e comandi utili per lo sviluppo.
+## Struttura Progetto
+
+```
+cyberbrick-ros2/
+├── docker/
+│   ├── Dockerfile.vnc      # ROS2 + Gazebo + VNC + OpenCV
+│   ├── supervisord.conf    # Configurazione servizi VNC
+│   └── start-vnc.sh        # Script avvio container
+├── docker-compose.vnc.yml  # Orchestrazione container
+├── worlds/
+│   └── cyberbrick_world.sdf  # Mondo Gazebo (robot, braccio, camera, cubi)
+├── scripts/
+│   ├── vision_node.py        # Rilevamento cubi colorati (OpenCV)
+│   └── start_simulation.sh   # Avvia Gazebo + bridge + vision
+├── launch/
+│   └── cyberbrick_sim.launch.py  # Launch file ROS2
+├── README.md
+└── agent.md                  # Contesto tecnico per AI agents
+```
+
+## Stato del Progetto
+
+### Funzionante
+- [x] Docker con VNC per visualizzare Gazebo su Mac M1
+- [x] Robot mobile differential drive (`/cmd_vel`)
+- [x] Braccio 3DOF con joint controller (`/arm/joint1`, `/arm/joint2`, `/arm/joint3`)
+- [x] Mondo con tavolo e cubi colorati (rosso, blu, verde)
+- [x] Camera simulata sul robot (`/camera/image_raw`)
+- [x] Vision node con OpenCV (`/detected_objects`)
+- [x] Script di avvio completo
+
+### Da Implementare
+- [ ] Voice node (comandi vocali con Whisper)
+- [ ] Gripper funzionante sul braccio
+- [ ] Navigazione autonoma verso cubi rilevati
+- [ ] Test con hardware reale CyberBrick
+
+## Obiettivo Finale
+
+Sistema completamente simulato dove puoi dire "prendi il cubo rosso" e:
+1. Robot naviga verso il tavolo
+2. Camera rileva la posizione del cubo rosso
+3. Braccio si muove per afferrarlo
+
+## Troubleshooting
+
+### VNC non si connette
+```bash
+# Verifica che il container sia attivo
+docker ps | grep cyberbrick
+
+# Riavvia il container
+docker compose -f docker-compose.vnc.yml restart
+```
+
+### Gazebo non parte
+```bash
+# Entra nel container e avvia manualmente
+docker exec -it cyberbrick-ros2-vnc bash
+export DISPLAY=:1
+ign gazebo /ros2_ws/src/cyberbrick_description/worlds/cyberbrick_world.sdf
+```
+
+### Rebuild dopo modifiche
+```bash
+docker compose -f docker-compose.vnc.yml build --no-cache
+docker compose -f docker-compose.vnc.yml up -d
+```
+
+## Note Tecniche
+
+- **Gazebo Fortress** (Ignition) invece di Gazebo Classic per compatibilità ARM64
+- **VNC** necessario perché OpenGL non funziona via XQuartz su Docker Mac
+- I plugin usano il naming `libignition-gazebo6-*` specifico per Fortress
+
+## Sviluppo
+
+Vedi [agent.md](agent.md) per dettagli tecnici e comandi utili per continuare lo sviluppo.
