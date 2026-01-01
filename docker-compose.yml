@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  ros2-gazebo:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
+    image: cyberbrick-ros2:humble
+    container_name: cyberbrick-ros2
+    
+    # Allow GUI apps (Gazebo, RViz) via XQuartz
+    environment:
+      - DISPLAY=host.docker.internal:0
+      - QT_X11_NO_MITSHM=1
+      - LIBGL_ALWAYS_SOFTWARE=1
+      - GAZEBO_IP=127.0.0.1
+      - MQTT_BROKER=mosquitto
+    
+    # Mount workspace
+    volumes:
+      - ./urdf:/ros2_ws/src/cyberbrick_description/urdf
+      - ./launch:/ros2_ws/src/cyberbrick_description/launch
+      - ./worlds:/ros2_ws/src/cyberbrick_description/worlds
+      - ./config:/ros2_ws/src/cyberbrick_description/config
+      - ./scripts:/ros2_ws/src/cyberbrick_control/scripts
+    
+    # Keep running
+    stdin_open: true
+    tty: true
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+    
+    depends_on:
+      - mosquitto
+
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    restart: unless-stopped

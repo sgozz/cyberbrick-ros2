@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  ros2-gazebo-vnc:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile.vnc
+    image: cyberbrick-ros2-vnc:humble
+    container_name: cyberbrick-ros2-vnc
+    
+    ports:
+      - "6080:6080"  # noVNC (browser)
+      - "5901:5901"  # VNC direct
+    
+    volumes:
+      - ./urdf:/ros2_ws/src/cyberbrick_description/urdf
+      - ./launch:/ros2_ws/src/cyberbrick_description/launch
+      - ./worlds:/ros2_ws/src/cyberbrick_description/worlds
+      - ./scripts:/ros2_ws/src/cyberbrick_control/scripts
+    
+    environment:
+      - VNC_RESOLUTION=1280x800
+    
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+    
+    restart: unless-stopped
+
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: mosquitto
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    restart: unless-stopped

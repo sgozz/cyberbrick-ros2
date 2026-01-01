@@ -1,0 +1,66 @@
+# CyberBrick ROS2 + Gazebo con VNC
+# Accedi via browser a http://localhost:6080
+
+FROM arm64v8/ros:humble
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install VNC, noVNC, and desktop environment
+RUN apt-get update && apt-get install -y \
+    tigervnc-standalone-server \
+    tigervnc-common \
+    novnc \
+    websockify \
+    supervisor \
+    xfce4 \
+    xfce4-terminal \
+    dbus-x11 \
+    x11-xserver-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install ROS2 packages
+RUN apt-get update && apt-get install -y \
+    ros-humble-robot-state-publisher \
+    ros-humble-joint-state-publisher \
+    ros-humble-joint-state-publisher-gui \
+    ros-humble-xacro \
+    ros-humble-rviz2 \
+    ros-humble-ros-gz \
+    ros-humble-teleop-twist-keyboard \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Gazebo Fortress (compatible with ARM64)
+RUN apt-get update && apt-get install -y \
+    ignition-fortress \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python packages
+RUN pip3 install paho-mqtt numpy
+
+# Create workspace
+RUN mkdir -p /ros2_ws/src
+WORKDIR /ros2_ws
+
+# VNC setup
+ENV DISPLAY=:1
+ENV VNC_PORT=5901
+ENV NOVNC_PORT=6080
+ENV VNC_RESOLUTION=1280x800
+
+# Create VNC startup script
+RUN mkdir -p /root/.vnc
+RUN echo "#!/bin/bash\nstartxfce4 &" > /root/.vnc/xstartup && chmod +x /root/.vnc/xstartup
+RUN echo "password" | vncpasswd -f > /root/.vnc/passwd && chmod 600 /root/.vnc/passwd
+
+# Supervisor config for VNC + noVNC
+RUN mkdir -p /etc/supervisor/conf.d
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Startup script
+COPY start-vnc.sh /start-vnc.sh
+RUN chmod +x /start-vnc.sh
+
+EXPOSE 5901 6080
+
+CMD ["/start-vnc.sh"]
