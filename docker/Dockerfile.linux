@@ -1,0 +1,46 @@
+# CyberBrick ROS2 + Gazebo per Linux
+# Usa X11 forwarding nativo (senza VNC)
+
+FROM ros:humble
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install ROS2 packages
+RUN apt-get update && apt-get install -y \
+    ros-humble-robot-state-publisher \
+    ros-humble-joint-state-publisher \
+    ros-humble-joint-state-publisher-gui \
+    ros-humble-xacro \
+    ros-humble-rviz2 \
+    ros-humble-ros-gz \
+    ros-humble-teleop-twist-keyboard \
+    ros-humble-cv-bridge \
+    ros-humble-image-transport \
+    python3-pip \
+    python3-opencv \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Gazebo Fortress
+RUN apt-get update && apt-get install -y \
+    ignition-fortress \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install mesa for OpenGL support
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libgl1-mesa-dri \
+    mesa-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python packages
+RUN pip3 install paho-mqtt numpy opencv-python-headless
+
+# Create workspace
+RUN mkdir -p /ros2_ws/src
+WORKDIR /ros2_ws
+
+# Setup entrypoint
+COPY start-linux.sh /start-linux.sh
+RUN chmod +x /start-linux.sh
+
+CMD ["/start-linux.sh"]

@@ -1,0 +1,45 @@
+services:
+  ros2-gazebo:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile.linux
+    image: cyberbrick-ros2:humble
+    container_name: cyberbrick-ros2
+    
+    # X11 forwarding for native display
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - XDG_RUNTIME_DIR=/tmp/runtime-root
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    
+    volumes:
+      # X11 socket for display
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # Project files
+      - ./launch:/ros2_ws/src/cyberbrick_description/launch
+      - ./worlds:/ros2_ws/src/cyberbrick_description/worlds
+      - ./scripts:/ros2_ws/src/cyberbrick_control/scripts
+    
+    runtime: nvidia
+    
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    
+    restart: unless-stopped
+
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: mosquitto
+    ports:
+      - "1883:1883"
+    command: mosquitto -c /mosquitto-no-auth.conf
+    restart: unless-stopped
