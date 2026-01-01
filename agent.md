@@ -1,30 +1,31 @@
 # CyberBrick ROS2 - Agent Context
 
-## Project Overview
+Documentazione tecnica per sviluppo assistito da AI.
 
-Simulation of CyberBrick hardware (L-ONE robotic arm + truck) using ROS2 + Gazebo, controllable via MQTT.
+## Overview
 
-The goal is to develop control scripts that work identically with both the simulation and real hardware.
+Simulazione CyberBrick (braccio L-ONE + truck) con Gazebo Fortress, controllabile via MQTT.
 
-## Current Status
+## Stato Attuale
 
-### Working
-- [x] L-ONE arm simulation (4 DOF + gripper)
-- [x] CyberBrick truck simulation (Ackermann steering)
-- [x] MQTT bridge (translates MQTT commands to Gazebo)
-- [x] Docker setup for Linux (X11) and Mac (VNC)
-- [x] Camera simulation
-- [x] Vision node (cube detection)
+### Funzionante
+- [x] Braccio L-ONE simulato (4 DOF + gripper)
+- [x] Truck CyberBrick simulato (sterzo Ackermann)
+- [x] Bridge MQTT (traduce comandi MQTT in comandi Gazebo)
+- [x] Docker per Linux (X11 e NVIDIA GPU)
+- [x] Docker per Mac (VNC)
+- [x] Camera simulata
+- [x] Vision node (rilevamento cubi)
 
-### To Implement
-- [ ] MicroPython code for real CyberBrick ESP32-C3
-- [ ] Voice commands (Whisper)
-- [ ] Autonomous navigation
+### Da Implementare
+- [ ] Codice MicroPython per ESP32-C3 reale
+- [ ] Comandi vocali (Whisper)
+- [ ] Navigazione autonoma
 
-## Architecture
+## Architettura
 
 ```
-Python Scripts (your code)
+Script Python (tuo codice)
        |
        | MQTT (localhost:1883)
        v
@@ -34,142 +35,126 @@ Python Scripts (your code)
        v
    mqtt_bridge.py
        |
-       | ign topic commands
+       | ign topic
        v
    Gazebo Fortress
-   - l_one_arm model
-   - cyberbrick_truck model
+   - l_one_arm
+   - cyberbrick_truck
 ```
 
-## MQTT Protocol
+## Protocollo MQTT
 
-### Arm Commands
+### Comandi Braccio
 
-| Topic | Payload | Unit |
-|-------|---------|------|
-| `cyberbrick/arm/base` | `{"angle": 45}` | degrees |
-| `cyberbrick/arm/shoulder` | `{"angle": 30}` | degrees |
-| `cyberbrick/arm/elbow` | `{"angle": 45}` | degrees |
-| `cyberbrick/arm/gripper` | `{"open": true}` | boolean |
-| `cyberbrick/arm/move` | `{"base": 0, "shoulder": 30, "elbow": 45}` | degrees |
+| Topic | Payload | Unità |
+|-------|---------|-------|
+| `cyberbrick/arm/base` | `{"angle": 45}` | gradi |
+| `cyberbrick/arm/shoulder` | `{"angle": 30}` | gradi |
+| `cyberbrick/arm/elbow` | `{"angle": 45}` | gradi |
+| `cyberbrick/arm/gripper` | `{"open": true}` | bool |
+| `cyberbrick/arm/move` | `{"base": 0, "shoulder": 30, "elbow": 45}` | gradi |
 
-### Truck Commands
+### Comandi Truck
 
-| Topic | Payload | Unit |
-|-------|---------|------|
+| Topic | Payload | Unità |
+|-------|---------|-------|
 | `cyberbrick/truck/cmd` | `{"speed": 0.3, "steering": 0.2}` | m/s, rad |
 | `cyberbrick/truck/stop` | `{}` | - |
 
-### Feedback Topics
+### Feedback
 
 | Topic | Payload |
 |-------|---------|
 | `cyberbrick/arm/state` | `{"base": 0, "shoulder": 30, "elbow": 45, "gripper_open": true}` |
 | `cyberbrick/truck/odom` | `{"x": 0.1, "y": 0.2, "heading": 45}` |
 
-## Gazebo Topics (Internal)
+## Topic Gazebo (Interni)
 
-These are the raw Gazebo topics used by the MQTT bridge:
+Usati dal bridge MQTT internamente:
 
-| Gazebo Topic | Type | Description |
-|--------------|------|-------------|
-| `/arm/base` | `ignition.msgs.Double` | Base rotation (rad) |
-| `/arm/shoulder` | `ignition.msgs.Double` | Shoulder angle (rad) |
-| `/arm/elbow` | `ignition.msgs.Double` | Elbow angle (rad) |
-| `/arm/gripper` | `ignition.msgs.Double` | Gripper position (m) |
-| `/truck/cmd_vel` | `ignition.msgs.Twist` | Truck velocity |
-| `/truck/odom` | `ignition.msgs.Odometry` | Truck odometry |
-| `/camera/image_raw` | `ignition.msgs.Image` | Camera image |
+| Topic | Tipo | Descrizione |
+|-------|------|-------------|
+| `/arm/base` | `ignition.msgs.Double` | Rotazione base (rad) |
+| `/arm/shoulder` | `ignition.msgs.Double` | Spalla (rad) |
+| `/arm/elbow` | `ignition.msgs.Double` | Gomito (rad) |
+| `/arm/gripper` | `ignition.msgs.Double` | Gripper (m) |
+| `/truck/cmd_vel` | `ignition.msgs.Twist` | Velocità truck |
+| `/camera/image_raw` | `ignition.msgs.Image` | Immagine camera |
 
-## Key Files
+## File Principali
 
-| File | Description |
+| File | Descrizione |
 |------|-------------|
-| `worlds/cyberbrick_world.sdf` | Gazebo world with arm, truck, table, cubes |
-| `scripts/mqtt_bridge.py` | MQTT to Gazebo bridge |
-| `scripts/test_mqtt.py` | Interactive test script |
-| `scripts/vision_node.py` | OpenCV cube detection |
-| `docker-compose.linux.yml` | Docker setup for Linux |
-| `docker-compose.vnc.yml` | Docker setup for Mac |
+| `worlds/cyberbrick_world.sdf` | Mondo Gazebo con braccio, truck, tavolo, cubi |
+| `scripts/mqtt_bridge.py` | Bridge MQTT → Gazebo |
+| `scripts/test_mqtt.py` | Script test interattivo |
+| `scripts/start_simulation.sh` | Avvia simulazione completa |
+| `scripts/vision_node.py` | Rilevamento cubi OpenCV |
 
-## Useful Commands
+## Comandi Utili
 
-### Start Simulation
+### Avvia Simulazione
 
 ```bash
-# Linux
+# Avvia container
 xhost +local:docker
-docker compose -f docker-compose.linux.yml up -d
-docker exec -d cyberbrick-ros2 bash -c "export DISPLAY=:0 && ign gazebo /ros2_ws/src/cyberbrick_description/worlds/cyberbrick_world.sdf -r"
-sleep 10
-docker exec cyberbrick-ros2 bash -c "ign service -s /world/cyberbrick_world/control --reqtype ignition.msgs.WorldControl --reptype ignition.msgs.Boolean --timeout 2000 --req 'pause: false'"
+docker compose -f docker-compose.nvidia.yml up -d
+
+# Avvia tutto
+docker exec -it cyberbrick-ros2 bash /ros2_ws/src/cyberbrick_control/scripts/start_simulation.sh
 ```
 
-### Start MQTT Bridge
+### Avvio Manuale
 
 ```bash
-# Get mosquitto IP
-MQTT_IP=$(docker inspect mosquitto --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+# Gazebo
+docker exec -d cyberbrick-ros2 bash -c "export DISPLAY=:0 && ign gazebo /ros2_ws/src/cyberbrick_description/worlds/cyberbrick_world.sdf -r"
 
-# Start bridge
+# Unpause (dopo 10 sec)
+docker exec cyberbrick-ros2 bash -c "ign service -s /world/cyberbrick_world/control --reqtype ignition.msgs.WorldControl --reptype ignition.msgs.Boolean --timeout 2000 --req 'pause: false'"
+
+# Bridge MQTT
+MQTT_IP=$(docker inspect mosquitto --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
 docker exec -d cyberbrick-ros2 python3 /ros2_ws/src/cyberbrick_control/scripts/mqtt_bridge.py --host $MQTT_IP --port 1883
 ```
 
-### Test Commands
+### Test
 
 ```bash
-# Direct Gazebo commands
+# Test interattivo
+python3 scripts/test_mqtt.py
+
+# Test diretto Gazebo
 docker exec cyberbrick-ros2 bash -c "ign topic -t /arm/shoulder -m ignition.msgs.Double -p 'data: 0.8'"
-docker exec cyberbrick-ros2 bash -c "ign topic -t /truck/cmd_vel -m ignition.msgs.Twist -p 'linear: {x: 0.3}'"
-
-# Via MQTT (from host)
-python3 -c "
-import paho.mqtt.client as mqtt
-import json
-client = mqtt.Client()
-client.connect('localhost', 1883)
-client.publish('cyberbrick/arm/shoulder', json.dumps({'angle': 45}))
-client.disconnect()
-"
 ```
 
-### Stop Everything
+### Stop
 
 ```bash
-docker compose -f docker-compose.linux.yml down
+docker compose -f docker-compose.nvidia.yml down
 ```
 
-## Simulated Hardware Specs
+## Specifiche Hardware Simulato
 
-### L-ONE Arm
+### Braccio L-ONE
 
-| Joint | Range | Gazebo Topic |
-|-------|-------|--------------|
-| Base rotation | -90 to 90 deg | `/arm/base` |
-| Shoulder | -30 to 90 deg | `/arm/shoulder` |
-| Elbow | -90 to 90 deg | `/arm/elbow` |
-| Gripper | open/close | `/arm/gripper` |
+| Giunto | Range | Topic |
+|--------|-------|-------|
+| Base | -90 to 90 deg | `/arm/base` |
+| Spalla | -30 to 90 deg | `/arm/shoulder` |
+| Gomito | -90 to 90 deg | `/arm/elbow` |
+| Gripper | aperto/chiuso | `/arm/gripper` |
 
-### CyberBrick Truck
+### Truck CyberBrick
 
-- Type: Ackermann steering (like a car)
-- Drive: Rear wheels
-- Steering: Front wheels
-- Control: `/truck/cmd_vel` (linear.x = speed, angular.z = steering)
+- Tipo: Sterzo Ackermann
+- Trazione: Ruote posteriori
+- Sterzo: Ruote anteriori
+- Controllo: `/truck/cmd_vel` (linear.x = velocità, angular.z = sterzo)
 
-## Next Steps for Real Hardware
+## Note
 
-1. Write MicroPython code for ESP32-C3 that:
-   - Connects to WiFi
-   - Connects to MQTT broker
-   - Subscribes to `cyberbrick/#` topics
-   - Controls servos/motors based on received commands
-
-2. The same Python scripts will work with both simulation and real hardware.
-
-## Notes
-
-- Gazebo Fortress (Ignition) is used for ARM64 compatibility
-- MQTT broker runs on port 1883 (exposed from Docker)
-- Bridge converts degrees to radians for Gazebo
-- Shoulder joint needs high PID gains to overcome gravity
+- Gazebo Fortress per compatibilità ARM64
+- MQTT broker su porta 1883 (esposta da Docker)
+- Bridge converte gradi → radianti per Gazebo
+- Spalla richiede PID gains alti per vincere la gravità
