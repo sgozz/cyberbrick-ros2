@@ -200,9 +200,61 @@ docker compose ps
 mosquitto_pub -h localhost -t test -m "hello"
 ```
 
-## Prossimi passi
+## Stato del Progetto
 
-1. **Aggiungi vision_node.py** - Rilevamento oggetti colorati
-2. **Aggiungi voice_node.py** - Comandi vocali con Whisper
-3. **Crea launch file completo** - Avvia tutto insieme
-4. **Integra con robot reale** - Testa con CyberBrick fisico
+### Funzionante
+- [x] Docker con VNC per visualizzare Gazebo su Mac M1
+- [x] Robot mobile differential drive (`/cmd_vel`)
+- [x] Braccio 3DOF con joint controller (`/arm/joint1`, `/arm/joint2`, `/arm/joint3`)
+- [x] Mondo con tavolo e cubi colorati
+- [x] Container MQTT Mosquitto
+
+### Da Implementare
+- [ ] Bridge MQTT (Ignition topics ↔ MQTT per hardware reale)
+- [ ] Camera simulata sul robot
+- [ ] `vision_node.py` - Rilevamento cubi colorati con OpenCV
+- [ ] `voice_node.py` - Comandi vocali con Whisper
+- [ ] Gripper funzionante sul braccio
+- [ ] Launch file completo
+- [ ] Test con hardware reale CyberBrick
+
+## Uso con VNC (Mac M1)
+
+```bash
+# Avvia i container
+docker compose -f docker-compose.vnc.yml up -d
+
+# Apri nel browser
+open http://localhost:6080/vnc.html
+
+# Avvia Gazebo (da un altro terminale)
+docker exec cyberbrick-ros2-vnc bash -c "export DISPLAY=:1 && ign gazebo /ros2_ws/src/cyberbrick_description/worlds/cyberbrick_world.sdf &"
+```
+
+### Comandi robot
+```bash
+# Avanti
+docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /cmd_vel -m ignition.msgs.Twist -p 'linear: {x: 0.3}'"
+
+# Ruota
+docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /cmd_vel -m ignition.msgs.Twist -p 'angular: {z: 1.0}'"
+
+# Stop
+docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /cmd_vel -m ignition.msgs.Twist -p 'linear: {x: 0}'"
+```
+
+### Comandi braccio
+```bash
+# Joint 1 (base): -1.57 a 1.57 rad
+docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /arm/joint1 -m ignition.msgs.Double -p 'data: 0.5'"
+
+# Joint 2 (spalla): -0.78 a 2.35 rad  
+docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /arm/joint2 -m ignition.msgs.Double -p 'data: 1.0'"
+
+# Joint 3 (gomito): -2.35 a 0.78 rad
+docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /arm/joint3 -m ignition.msgs.Double -p 'data: -0.5'"
+```
+
+## Agent Context
+
+Vedi [agent.md](agent.md) per dettagli tecnici e comandi utili per lo sviluppo.
