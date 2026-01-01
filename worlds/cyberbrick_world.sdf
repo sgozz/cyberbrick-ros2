@@ -121,9 +121,9 @@
       </link>
     </model>
 
-    <!-- Red cube (target object) -->
+    <!-- Red cube (target object) - positioned within arm reach -->
     <model name="red_cube">
-      <pose>0.4 0.1 0.28 0 0 0</pose>
+      <pose>0.6 0.08 0.2725 0 0 0</pose>
       <link name="link">
         <inertial>
           <mass>0.05</mass>
@@ -136,14 +136,14 @@
         <collision name="collision">
           <geometry>
             <box>
-              <size>0.04 0.04 0.04</size>
+              <size>0.025 0.025 0.025</size>
             </box>
           </geometry>
         </collision>
         <visual name="visual">
           <geometry>
             <box>
-              <size>0.04 0.04 0.04</size>
+              <size>0.025 0.025 0.025</size>
             </box>
           </geometry>
           <material>
@@ -154,9 +154,9 @@
       </link>
     </model>
 
-    <!-- Blue cube -->
+    <!-- Blue cube - positioned within arm reach -->
     <model name="blue_cube">
-      <pose>0.5 -0.1 0.28 0 0 0</pose>
+      <pose>0.6 -0.08 0.2725 0 0 0</pose>
       <link name="link">
         <inertial>
           <mass>0.05</mass>
@@ -169,14 +169,14 @@
         <collision name="collision">
           <geometry>
             <box>
-              <size>0.04 0.04 0.04</size>
+              <size>0.025 0.025 0.025</size>
             </box>
           </geometry>
         </collision>
         <visual name="visual">
           <geometry>
             <box>
-              <size>0.04 0.04 0.04</size>
+              <size>0.025 0.025 0.025</size>
             </box>
           </geometry>
           <material>
@@ -187,9 +187,9 @@
       </link>
     </model>
 
-    <!-- Green cube -->
+    <!-- Green cube - positioned within arm reach -->
     <model name="green_cube">
-      <pose>0.6 0.05 0.28 0 0 0</pose>
+      <pose>0.62 0.0 0.2725 0 0 0</pose>
       <link name="link">
         <inertial>
           <mass>0.05</mass>
@@ -202,14 +202,14 @@
         <collision name="collision">
           <geometry>
             <box>
-              <size>0.04 0.04 0.04</size>
+              <size>0.025 0.025 0.025</size>
             </box>
           </geometry>
         </collision>
         <visual name="visual">
           <geometry>
             <box>
-              <size>0.04 0.04 0.04</size>
+              <size>0.025 0.025 0.025</size>
             </box>
           </geometry>
           <material>
@@ -358,8 +358,8 @@
         <axis>
           <xyz>0 0 1</xyz>
           <limit>
-            <lower>-1.57</lower>
-            <upper>1.57</upper>
+            <lower>-3.14159</lower>
+            <upper>3.14159</upper>
             <velocity>1.0</velocity>
             <effort>10</effort>
           </limit>
@@ -458,11 +458,11 @@
         <d_gain>2.5</d_gain>
       </plugin>
       
-      <!-- Gripper (position control - both fingers together) -->
+      <!-- Gripper (position control - separate topics for each finger) -->
       <plugin filename="libignition-gazebo-joint-position-controller-system.so" 
               name="ignition::gazebo::systems::JointPositionController">
         <joint_name>gripper_left_joint</joint_name>
-        <topic>/arm/gripper</topic>
+        <topic>/arm/gripper_left</topic>
         <p_gain>20</p_gain>
         <i_gain>0.01</i_gain>
         <d_gain>1.0</d_gain>
@@ -470,7 +470,7 @@
       <plugin filename="libignition-gazebo-joint-position-controller-system.so" 
               name="ignition::gazebo::systems::JointPositionController">
         <joint_name>gripper_right_joint</joint_name>
-        <topic>/arm/gripper</topic>
+        <topic>/arm/gripper_right</topic>
         <p_gain>20</p_gain>
         <i_gain>0.01</i_gain>
         <d_gain>1.0</d_gain>

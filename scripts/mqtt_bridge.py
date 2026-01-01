@@ -183,13 +183,19 @@ class MQTTBridge:
         self.arm_state["elbow"] = angle_deg
 
     def handle_arm_gripper(self, payload):
-        """Handle gripper open/close"""
+        """Handle gripper open/close - single servo controls both fingers"""
         is_open = payload.get("open", True)
 
-        # Open: positive value, Close: negative value
-        position = 0.005 if is_open else -0.008
+        # Both fingers use same value:
+        # Positive = fingers move apart (open)
+        # Negative = fingers move together (close)
+        if is_open:
+            pos = 0.005  # open
+        else:
+            pos = -0.01  # close
 
-        self.send_ign_cmd("/arm/gripper", "ignition.msgs.Double", f"data: {position}")
+        self.send_ign_cmd("/arm/gripper_left", "ignition.msgs.Double", f"data: {pos}")
+        self.send_ign_cmd("/arm/gripper_right", "ignition.msgs.Double", f"data: {pos}")
         self.arm_state["gripper_open"] = is_open
 
     def handle_arm_move(self, payload):

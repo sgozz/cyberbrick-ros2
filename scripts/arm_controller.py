@@ -34,20 +34,23 @@ ARM_BASE_X = 0.5
 ARM_BASE_Y = 0.0
 ARM_BASE_Z = 0.26
 
-# Link lengths (from SDF: lower_arm visual 0.08m, upper_arm visual 0.07m + gripper offset 0.07m)
-BASE_HEIGHT = 0.045  # Height of base + turntable
-LOWER_ARM_LENGTH = 0.10  # Shoulder to elbow (including joint offsets)
-UPPER_ARM_LENGTH = 0.12  # Elbow to gripper tip (upper_arm + gripper)
+# Link lengths (from SDF geometry analysis)
+# SDF: lower_arm at 0.02m offset, 0.08m visual; upper_arm at 0.08m offset, 0.07m visual
+# gripper_base at 0.07m offset, fingers extend ~0.03m
+BASE_HEIGHT = 0.02  # Height from arm base to shoulder joint
+LOWER_ARM_LENGTH = 0.08  # Shoulder to elbow (lower_arm visual length)
+UPPER_ARM_LENGTH = 0.10  # Elbow to gripper tip (upper_arm 0.07m + gripper 0.03m)
 
-# Joint limits (in degrees) - relaxed for testing
+# Joint limits (in degrees) - from SDF joint limits
 BASE_MIN, BASE_MAX = -90, 90
-SHOULDER_MIN, SHOULDER_MAX = -30, 100  # Relaxed from 90
-ELBOW_MIN, ELBOW_MAX = -90, 135  # Relaxed from 90
+SHOULDER_MIN, SHOULDER_MAX = -30, 90  # SDF: -0.5 to 1.57 rad
+ELBOW_MIN, ELBOW_MAX = -90, 90  # SDF: -1.57 to 1.57 rad
 
-# Heights for pick/place operations
-APPROACH_HEIGHT = 0.06  # Height above table for approach (reduced for reach)
-PICK_HEIGHT = 0.02  # Height for grabbing cube (cube is 4cm)
-SAFE_HEIGHT = 0.10  # Safe height for moving
+# Heights for pick/place operations (relative to table surface at z=0.26)
+# Cubes are 4cm tall, so grab at ~2cm height
+APPROACH_HEIGHT = 0.04  # Height above table for approach
+PICK_HEIGHT = 0.02  # Height for grabbing cube (middle of cube)
+SAFE_HEIGHT = 0.06  # Safe height for moving
 
 # Timing
 MOVE_DELAY = 0.8  # Delay between joint movements
