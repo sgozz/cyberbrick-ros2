@@ -1,128 +1,175 @@
 # CyberBrick ROS2 - Agent Context
 
-## Progetto
+## Project Overview
 
-Simulazione ROS2 + Gazebo per robot CyberBrick (mobile + braccio 3DOF) su Mac M1.
-L'obiettivo finale è controllare il robot con comandi vocali e visione artificiale.
+Simulation of CyberBrick hardware (L-ONE robotic arm + truck) using ROS2 + Gazebo, controllable via MQTT.
 
-## Stato Attuale
+The goal is to develop control scripts that work identically with both the simulation and real hardware.
 
-### Funzionante
-- [x] Docker con VNC per visualizzare Gazebo su Mac M1
-- [x] Robot mobile differential drive controllabile via `/cmd_vel`
-- [x] Braccio 3DOF con joint position controller (`/arm/joint1`, `/arm/joint2`, `/arm/joint3`)
-- [x] Mondo con tavolo e cubi colorati (rosso, blu, verde)
-- [x] Container MQTT Mosquitto attivo
-- [x] Camera simulata sul robot (pubblica su `/camera/image_raw`)
-- [x] Vision node con OpenCV (rileva cubi, pubblica su `/detected_objects`)
-- [x] ROS-Ignition bridge per camera e controlli
-- [x] Script di avvio completo (`start_simulation.sh`)
+## Current Status
 
-### Da Implementare
-- [ ] Voice node (comandi vocali con Whisper)
-- [ ] Gripper funzionante sul braccio
-- [ ] Test con hardware reale CyberBrick
-- [ ] Navigazione autonoma verso cubi rilevati
+### Working
+- [x] L-ONE arm simulation (4 DOF + gripper)
+- [x] CyberBrick truck simulation (Ackermann steering)
+- [x] MQTT bridge (translates MQTT commands to Gazebo)
+- [x] Docker setup for Linux (X11) and Mac (VNC)
+- [x] Camera simulation
+- [x] Vision node (cube detection)
 
-## Architettura
+### To Implement
+- [ ] MicroPython code for real CyberBrick ESP32-C3
+- [ ] Voice commands (Whisper)
+- [ ] Autonomous navigation
+
+## Architecture
 
 ```
-Mac M1
-├── Docker (Colima)
-│   ├── cyberbrick-ros2-vnc (ROS2 Humble + Gazebo Fortress)
-│   │   ├── VNC server (:5901)
-│   │   ├── noVNC web (:6080)
-│   │   └── Gazebo simulation
-│   └── mosquitto (MQTT broker :1883)
-└── Browser → http://localhost:6080/vnc.html
+Python Scripts (your code)
+       |
+       | MQTT (localhost:1883)
+       v
+   Mosquitto (Docker)
+       |
+       | MQTT  
+       v
+   mqtt_bridge.py
+       |
+       | ign topic commands
+       v
+   Gazebo Fortress
+   - l_one_arm model
+   - cyberbrick_truck model
 ```
 
-## Comandi Utili
+## MQTT Protocol
 
-### Avviare simulazione
-```bash
-cd /path/to/cyberbrick-ros2
-docker compose -f docker-compose.vnc.yml up -d
-# Apri http://localhost:6080/vnc.html
-```
+### Arm Commands
 
-### Controllare robot (da terminale host)
-```bash
-# Muovi robot avanti
-docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /cmd_vel -m ignition.msgs.Twist -p 'linear: {x: 0.3}'"
+| Topic | Payload | Unit |
+|-------|---------|------|
+| `cyberbrick/arm/base` | `{"angle": 45}` | degrees |
+| `cyberbrick/arm/shoulder` | `{"angle": 30}` | degrees |
+| `cyberbrick/arm/elbow` | `{"angle": 45}` | degrees |
+| `cyberbrick/arm/gripper` | `{"open": true}` | boolean |
+| `cyberbrick/arm/move` | `{"base": 0, "shoulder": 30, "elbow": 45}` | degrees |
 
-# Ruota robot
-docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /cmd_vel -m ignition.msgs.Twist -p 'angular: {z: 1.0}'"
+### Truck Commands
 
-# Stop robot
-docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /cmd_vel -m ignition.msgs.Twist -p 'linear: {x: 0}'"
-```
+| Topic | Payload | Unit |
+|-------|---------|------|
+| `cyberbrick/truck/cmd` | `{"speed": 0.3, "steering": 0.2}` | m/s, rad |
+| `cyberbrick/truck/stop` | `{}` | - |
 
-### Controllare braccio
-```bash
-# Ruota base (joint1): -1.57 a 1.57 rad
-docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /arm/joint1 -m ignition.msgs.Double -p 'data: 0.5'"
+### Feedback Topics
 
-# Spalla (joint2): -0.78 a 2.35 rad
-docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /arm/joint2 -m ignition.msgs.Double -p 'data: 1.0'"
+| Topic | Payload |
+|-------|---------|
+| `cyberbrick/arm/state` | `{"base": 0, "shoulder": 30, "elbow": 45, "gripper_open": true}` |
+| `cyberbrick/truck/odom` | `{"x": 0.1, "y": 0.2, "heading": 45}` |
 
-# Gomito (joint3): -2.35 a 0.78 rad
-docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /arm/joint3 -m ignition.msgs.Double -p 'data: -0.5'"
-```
+## Gazebo Topics (Internal)
 
-### Avviare simulazione completa (con visione)
-```bash
-# Rebuild container dopo modifiche al Dockerfile
-docker compose -f docker-compose.vnc.yml build
+These are the raw Gazebo topics used by the MQTT bridge:
 
-# Avvia container
-docker compose -f docker-compose.vnc.yml up -d
+| Gazebo Topic | Type | Description |
+|--------------|------|-------------|
+| `/arm/base` | `ignition.msgs.Double` | Base rotation (rad) |
+| `/arm/shoulder` | `ignition.msgs.Double` | Shoulder angle (rad) |
+| `/arm/elbow` | `ignition.msgs.Double` | Elbow angle (rad) |
+| `/arm/gripper` | `ignition.msgs.Double` | Gripper position (m) |
+| `/truck/cmd_vel` | `ignition.msgs.Twist` | Truck velocity |
+| `/truck/odom` | `ignition.msgs.Odometry` | Truck odometry |
+| `/camera/image_raw` | `ignition.msgs.Image` | Camera image |
 
-# Esegui script di avvio completo
-docker exec -it cyberbrick-ros2-vnc bash /ros2_ws/src/cyberbrick_control/scripts/start_simulation.sh
-```
+## Key Files
 
-### Testare visione
-```bash
-# Visualizza oggetti rilevati
-docker exec cyberbrick-ros2-vnc bash -c "source /opt/ros/humble/setup.bash && ros2 topic echo /detected_objects"
-```
-
-### Riavviare Gazebo
-```bash
-docker exec cyberbrick-ros2-vnc pkill -f "ign gazebo"
-docker exec cyberbrick-ros2-vnc bash -c "export DISPLAY=:1 && ign gazebo /ros2_ws/src/cyberbrick_description/worlds/cyberbrick_world.sdf &"
-sleep 5
-docker exec cyberbrick-ros2-vnc bash -c "ign service -s /world/cyberbrick_world/control --reqtype ignition.msgs.WorldControl --reptype ignition.msgs.Boolean --timeout 2000 --req 'pause: false'"
-```
-
-### Fermare tutto
-```bash
-docker compose -f docker-compose.vnc.yml down
-```
-
-## File Principali
-
-| File | Descrizione |
+| File | Description |
 |------|-------------|
-| `worlds/cyberbrick_world.sdf` | Mondo Gazebo con robot (+ camera), braccio, tavolo, cubi |
-| `docker-compose.vnc.yml` | Setup Docker con VNC |
-| `docker/Dockerfile.vnc` | Immagine ROS2 + Gazebo + VNC + OpenCV |
-| `scripts/vision_node.py` | Nodo visione per rilevamento cubi colorati |
-| `scripts/start_simulation.sh` | Script per avviare tutta la simulazione |
+| `worlds/cyberbrick_world.sdf` | Gazebo world with arm, truck, table, cubes |
+| `scripts/mqtt_bridge.py` | MQTT to Gazebo bridge |
+| `scripts/test_mqtt.py` | Interactive test script |
+| `scripts/vision_node.py` | OpenCV cube detection |
+| `docker-compose.linux.yml` | Docker setup for Linux |
+| `docker-compose.vnc.yml` | Docker setup for Mac |
 
-## Obiettivo Finale
+## Useful Commands
 
-Sistema completamente simulato:
-1. Robot mobile naviga verso il tavolo
-2. Camera simulata rileva cubi colorati
-3. Comandi vocali: "prendi il cubo rosso"
-4. Braccio afferra il cubo
+### Start Simulation
 
-Nessun hardware reale richiesto - tutto in Gazebo.
+```bash
+# Linux
+xhost +local:docker
+docker compose -f docker-compose.linux.yml up -d
+docker exec -d cyberbrick-ros2 bash -c "export DISPLAY=:0 && ign gazebo /ros2_ws/src/cyberbrick_description/worlds/cyberbrick_world.sdf -r"
+sleep 10
+docker exec cyberbrick-ros2 bash -c "ign service -s /world/cyberbrick_world/control --reqtype ignition.msgs.WorldControl --reptype ignition.msgs.Boolean --timeout 2000 --req 'pause: false'"
+```
 
-## Note
+### Start MQTT Bridge
 
-- Gazebo Fortress (Ignition) usato al posto di Gazebo Classic per compatibilità ARM64
-- VNC necessario perché OpenGL non funziona via XQuartz su Docker Mac
-- I plugin usano il naming `libignition-gazebo6-*` specifico per Fortress
+```bash
+# Get mosquitto IP
+MQTT_IP=$(docker inspect mosquitto --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+
+# Start bridge
+docker exec -d cyberbrick-ros2 python3 /ros2_ws/src/cyberbrick_control/scripts/mqtt_bridge.py --host $MQTT_IP --port 1883
+```
+
+### Test Commands
+
+```bash
+# Direct Gazebo commands
+docker exec cyberbrick-ros2 bash -c "ign topic -t /arm/shoulder -m ignition.msgs.Double -p 'data: 0.8'"
+docker exec cyberbrick-ros2 bash -c "ign topic -t /truck/cmd_vel -m ignition.msgs.Twist -p 'linear: {x: 0.3}'"
+
+# Via MQTT (from host)
+python3 -c "
+import paho.mqtt.client as mqtt
+import json
+client = mqtt.Client()
+client.connect('localhost', 1883)
+client.publish('cyberbrick/arm/shoulder', json.dumps({'angle': 45}))
+client.disconnect()
+"
+```
+
+### Stop Everything
+
+```bash
+docker compose -f docker-compose.linux.yml down
+```
+
+## Simulated Hardware Specs
+
+### L-ONE Arm
+
+| Joint | Range | Gazebo Topic |
+|-------|-------|--------------|
+| Base rotation | -90 to 90 deg | `/arm/base` |
+| Shoulder | -30 to 90 deg | `/arm/shoulder` |
+| Elbow | -90 to 90 deg | `/arm/elbow` |
+| Gripper | open/close | `/arm/gripper` |
+
+### CyberBrick Truck
+
+- Type: Ackermann steering (like a car)
+- Drive: Rear wheels
+- Steering: Front wheels
+- Control: `/truck/cmd_vel` (linear.x = speed, angular.z = steering)
+
+## Next Steps for Real Hardware
+
+1. Write MicroPython code for ESP32-C3 that:
+   - Connects to WiFi
+   - Connects to MQTT broker
+   - Subscribes to `cyberbrick/#` topics
+   - Controls servos/motors based on received commands
+
+2. The same Python scripts will work with both simulation and real hardware.
+
+## Notes
+
+- Gazebo Fortress (Ignition) is used for ARM64 compatibility
+- MQTT broker runs on port 1883 (exposed from Docker)
+- Bridge converts degrees to radians for Gazebo
+- Shoulder joint needs high PID gains to overcome gravity
