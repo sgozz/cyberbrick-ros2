@@ -34,20 +34,20 @@ ARM_BASE_X = 0.5
 ARM_BASE_Y = 0.0
 ARM_BASE_Z = 0.26
 
-# Link lengths
+# Link lengths (from SDF: lower_arm visual 0.08m, upper_arm visual 0.07m + gripper offset 0.07m)
 BASE_HEIGHT = 0.045  # Height of base + turntable
-LOWER_ARM_LENGTH = 0.08  # Shoulder to elbow
-UPPER_ARM_LENGTH = 0.07  # Elbow to gripper
+LOWER_ARM_LENGTH = 0.10  # Shoulder to elbow (including joint offsets)
+UPPER_ARM_LENGTH = 0.12  # Elbow to gripper tip (upper_arm + gripper)
 
-# Joint limits (in degrees)
+# Joint limits (in degrees) - relaxed for testing
 BASE_MIN, BASE_MAX = -90, 90
-SHOULDER_MIN, SHOULDER_MAX = -30, 90
-ELBOW_MIN, ELBOW_MAX = -90, 90
+SHOULDER_MIN, SHOULDER_MAX = -30, 100  # Relaxed from 90
+ELBOW_MIN, ELBOW_MAX = -90, 135  # Relaxed from 90
 
 # Heights for pick/place operations
-APPROACH_HEIGHT = 0.12  # Height above table for approach
-PICK_HEIGHT = 0.04  # Height for grabbing cube (cube is 4cm, grab at middle)
-SAFE_HEIGHT = 0.15  # Safe height for moving
+APPROACH_HEIGHT = 0.06  # Height above table for approach (reduced for reach)
+PICK_HEIGHT = 0.02  # Height for grabbing cube (cube is 4cm)
+SAFE_HEIGHT = 0.10  # Safe height for moving
 
 # Timing
 MOVE_DELAY = 0.8  # Delay between joint movements

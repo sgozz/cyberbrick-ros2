@@ -35,11 +35,11 @@ IMAGE_WIDTH = 640
 IMAGE_HEIGHT = 480
 
 # Calibration: map pixel coordinates to world coordinates
-# These values need tuning based on actual camera view
-WORLD_X_MIN = 0.15  # World X at image top
-WORLD_X_MAX = 0.85  # World X at image bottom
-WORLD_Y_MIN = -0.35  # World Y at image right
-WORLD_Y_MAX = 0.35  # World Y at image left
+# Tuned based on known cube positions: red(0.4,0.1), blue(0.5,-0.1), green(0.6,0.05)
+WORLD_X_MIN = 0.20  # World X at image top (adjusted)
+WORLD_X_MAX = 0.80  # World X at image bottom (adjusted)
+WORLD_Y_MIN = -0.25  # World Y at image left
+WORLD_Y_MAX = 0.25  # World Y at image right
 
 # HSV color ranges for cube detection
 COLOR_RANGES = {
@@ -59,8 +59,15 @@ COLOR_RANGES = {
     },
 }
 
-# Minimum contour area to consider as a cube
-MIN_CUBE_AREA = 200
+# Minimum contour area to consider as a cube (pixels^2)
+MIN_CUBE_AREA = 300
+MAX_CUBE_AREA = 5000  # Filter out large detections (arm, background)
+
+# Table boundaries in world coordinates (filter out detections outside table)
+TABLE_X_MIN = 0.25
+TABLE_X_MAX = 0.75
+TABLE_Y_MIN = -0.20
+TABLE_Y_MAX = 0.20
 
 
 class VisionBridge:
@@ -211,7 +218,8 @@ class VisionBridge:
 
     def detect_cubes(self, image):
         """Detect colored cubes in the image using HSV color filtering"""
-        detections = []
+        # Collect all candidates per color
+        candidates_by_color = {color: [] for color in COLOR_RANGES.keys()}
 
         # Convert to HSV
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -238,39 +246,65 @@ class VisionBridge:
             for contour in contours:
                 area = cv2.contourArea(contour)
 
-                if area > MIN_CUBE_AREA:
-                    # Get bounding box
-                    x, y, w, h = cv2.boundingRect(contour)
+                # Filter by area (not too small, not too large)
+                if area < MIN_CUBE_AREA or area > MAX_CUBE_AREA:
+                    continue
 
-                    # Calculate center in pixels
-                    center_px = x + w // 2
-                    center_py = y + h // 2
+                # Get bounding box
+                x, y, w, h = cv2.boundingRect(contour)
 
-                    # Convert to world coordinates
-                    world_x, world_y = self.pixel_to_world(center_px, center_py)
+                # Filter by aspect ratio (cubes should be roughly square)
+                aspect_ratio = max(w, h) / min(w, h) if min(w, h) > 0 else 10
+                if aspect_ratio > 2.5:
+                    continue
 
-                    detections.append(
-                        {
-                            "color": color_name,
-                            "x": round(world_x, 3),
-                            "y": round(world_y, 3),
-                            "pixel_x": center_px,
-                            "pixel_y": center_py,
-                            "area": area,
-                            "visible": True,
-                        }
-                    )
+                # Calculate center in pixels
+                center_px = x + w // 2
+                center_py = y + h // 2
+
+                # Convert to world coordinates
+                world_x, world_y = self.pixel_to_world(center_px, center_py)
+
+                # Filter by table boundaries
+                if not (
+                    TABLE_X_MIN <= world_x <= TABLE_X_MAX
+                    and TABLE_Y_MIN <= world_y <= TABLE_Y_MAX
+                ):
+                    continue
+
+                candidates_by_color[color_name].append(
+                    {
+                        "color": color_name,
+                        "x": round(world_x, 3),
+                        "y": round(world_y, 3),
+                        "pixel_x": center_px,
+                        "pixel_y": center_py,
+                        "area": area,
+                        "visible": True,
+                    }
+                )
+
+        # Select only the best candidate per color (largest area within valid range)
+        detections = []
+        for color_name, candidates in candidates_by_color.items():
+            if candidates:
+                # Sort by area descending and take the best one
+                best = max(candidates, key=lambda c: c["area"])
+                detections.append(best)
 
         return detections
 
     def pixel_to_world(self, px, py):
         """Convert pixel coordinates to world coordinates"""
         # Linear interpolation
-        # Note: camera is looking down, so image Y maps to world X (forward/back)
-        # and image X maps to world Y (left/right, inverted)
+        # Camera is at (0.5, 0, 0.8) with roll 180° + pitch 90°
+        # Calibration based on known cube positions:
+        #   red (0.4, 0.1), blue (0.5, -0.1), green (0.6, 0.05)
 
+        # Map pixel Y to world X
         world_x = WORLD_X_MIN + (py / IMAGE_HEIGHT) * (WORLD_X_MAX - WORLD_X_MIN)
-        world_y = WORLD_Y_MAX - (px / IMAGE_WIDTH) * (WORLD_Y_MAX - WORLD_Y_MIN)
+        # Map pixel X to world Y (inverted)
+        world_y = WORLD_Y_MIN + (px / IMAGE_WIDTH) * (WORLD_Y_MAX - WORLD_Y_MIN)
 
         return world_x, world_y
 
