@@ -13,15 +13,16 @@ L'obiettivo finale è controllare il robot con comandi vocali e visione artifici
 - [x] Braccio 3DOF con joint position controller (`/arm/joint1`, `/arm/joint2`, `/arm/joint3`)
 - [x] Mondo con tavolo e cubi colorati (rosso, blu, verde)
 - [x] Container MQTT Mosquitto attivo
+- [x] Camera simulata sul robot (pubblica su `/camera/image_raw`)
+- [x] Vision node con OpenCV (rileva cubi, pubblica su `/detected_objects`)
+- [x] ROS-Ignition bridge per camera e controlli
+- [x] Script di avvio completo (`start_simulation.sh`)
 
 ### Da Implementare
-- [ ] Bridge MQTT funzionante (ROS2 topics ↔ MQTT)
-- [ ] Camera simulata sul robot
-- [ ] Vision node (rilevamento cubi colorati con OpenCV)
 - [ ] Voice node (comandi vocali con Whisper)
 - [ ] Gripper funzionante sul braccio
-- [ ] Launch file completo
 - [ ] Test con hardware reale CyberBrick
+- [ ] Navigazione autonoma verso cubi rilevati
 
 ## Architettura
 
@@ -69,6 +70,24 @@ docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /arm/joint2 -m ignition.ms
 docker exec cyberbrick-ros2-vnc bash -c "ign topic -t /arm/joint3 -m ignition.msgs.Double -p 'data: -0.5'"
 ```
 
+### Avviare simulazione completa (con visione)
+```bash
+# Rebuild container dopo modifiche al Dockerfile
+docker compose -f docker-compose.vnc.yml build
+
+# Avvia container
+docker compose -f docker-compose.vnc.yml up -d
+
+# Esegui script di avvio completo
+docker exec -it cyberbrick-ros2-vnc bash /ros2_ws/src/cyberbrick_control/scripts/start_simulation.sh
+```
+
+### Testare visione
+```bash
+# Visualizza oggetti rilevati
+docker exec cyberbrick-ros2-vnc bash -c "source /opt/ros/humble/setup.bash && ros2 topic echo /detected_objects"
+```
+
 ### Riavviare Gazebo
 ```bash
 docker exec cyberbrick-ros2-vnc pkill -f "ign gazebo"
@@ -86,10 +105,11 @@ docker compose -f docker-compose.vnc.yml down
 
 | File | Descrizione |
 |------|-------------|
-| `worlds/cyberbrick_world.sdf` | Mondo Gazebo con robot, braccio, tavolo, cubi |
+| `worlds/cyberbrick_world.sdf` | Mondo Gazebo con robot (+ camera), braccio, tavolo, cubi |
 | `docker-compose.vnc.yml` | Setup Docker con VNC |
-| `docker/Dockerfile.vnc` | Immagine ROS2 + Gazebo + VNC |
-| `scripts/mqtt_bridge.py` | Bridge ROS2 ↔ MQTT (da completare) |
+| `docker/Dockerfile.vnc` | Immagine ROS2 + Gazebo + VNC + OpenCV |
+| `scripts/vision_node.py` | Nodo visione per rilevamento cubi colorati |
+| `scripts/start_simulation.sh` | Script per avviare tutta la simulazione |
 
 ## Obiettivo Finale
 

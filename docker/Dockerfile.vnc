@@ -27,7 +27,10 @@ RUN apt-get update && apt-get install -y \
     ros-humble-rviz2 \
     ros-humble-ros-gz \
     ros-humble-teleop-twist-keyboard \
+    ros-humble-cv-bridge \
+    ros-humble-image-transport \
     python3-pip \
+    python3-opencv \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Gazebo Fortress (compatible with ARM64)
@@ -36,7 +39,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Python packages
-RUN pip3 install paho-mqtt numpy
+RUN pip3 install paho-mqtt numpy opencv-python-headless
 
 # Create workspace
 RUN mkdir -p /ros2_ws/src
